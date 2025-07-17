@@ -11,12 +11,6 @@ library(ggplot2)
 library(dplyr)
 
 source("./helpersQC.R")
-
-yankee = read.csv("./methods/yankee.csv")
-yankee = yankee %>%
-  mutate(date =as.Date(yankee[,1], format = "%b %e, %Y"))
-yankee
-
 #runExample("01_hello")
 # Define UI ----
 ui <- page_sidebar(
@@ -36,7 +30,10 @@ ui <- page_sidebar(
         choices = list("BCP" , "BFAST", "BEAST" , "BSTS" ),
         selected = "BCP" 
       ),
-    dateInput("date", "Select date (for BSTS)", value = "2014-01-01"),
+    selectInput(
+        "date", 
+        label = "Select intervention year (BSTS)", 
+        choices = 2000:2025),
     fileInput("file2", label = "Predictor (for BSTS)", accept = ".csv" ),
     card(
       card_header(""),
@@ -44,6 +41,7 @@ ui <- page_sidebar(
     ),
     card_image("./fig1.png")),## too small here but doesn't make sense in the main?
     tableOutput("file"),
+    textOutput("date"),
     mainPanel(
       #tableOutput("head"),
       plotOutput("plot")
@@ -89,6 +87,14 @@ server <- function(input, output, session) {
     input$file2$datapath
   })
   
+  restDate = reactive({
+    input$date
+  })
+  
+  output$date = renderText({
+    paste0("Restoration date: ", input$date)
+  })
+  
   ## method
   method = reactive({
     input$select
@@ -97,12 +103,8 @@ server <- function(input, output, session) {
   ## plot
   output$plot = renderPlot({
    req(data())
-   if (is.null(data())) {
-     return(NULL)
-   }
   
-  make_plot(method(), datafile())
-  #make_plot(method(), datafile(), predfile())
+  make_plot(method(), datafile(), predfile(), restDate())
 
   })
 }
