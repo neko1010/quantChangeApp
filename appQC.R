@@ -35,10 +35,10 @@ ui <- page_sidebar(
         label = "Select intervention year (BSTS)", 
         choices = 2000:2025),
     fileInput("file2", label = "Predictor (for BSTS)", accept = ".csv" ),
-    card(
-      card_header(""),
-      actionButton("action", "Submit")#https://shiny.posit.co/r/articles/build/action-buttons/
-    ),
+    #card(
+    #  card_header(""),
+    #  actionButton("action", "Submit")#https://shiny.posit.co/r/articles/build/action-buttons/
+    #),
     card_image("./fig1.png")),## too small here but doesn't make sense in the main?
     tableOutput("file"),
     textOutput("date"),
