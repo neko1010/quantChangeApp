@@ -24,7 +24,7 @@ replace_na_with_mean <- function(df) {
   return(df)
 }
 
-make_sum = function(method, file, ancFiles = NULL, restDate = NULL){
+make_sum = function(method, file, ancFiles = NULL, restDate = NULL, obsFreq){
 #make_plot = function(method, file, date = NULL){
   ## read the CSV data
   data = read.csv(file)
@@ -57,7 +57,7 @@ make_sum = function(method, file, ancFiles = NULL, restDate = NULL){
   
   if(method == "BFAST"){
     ## create a time series object
-    data_ts = ts(data_fill$mesic, frequency = 4) ## update to be flexible to # of obs/cycle
+    data_ts = ts(data_fill$mesic, frequency = obsFreq) ## update to be flexible to # of obs/cycle
     
     ## apply the BFAST function
     fit = bfast(data_ts, h = 0.15, season = "harmonic")
@@ -67,9 +67,9 @@ make_sum = function(method, file, ancFiles = NULL, restDate = NULL){
   
   if(method == "BEAST"){
     start_date = as.Date(data_fill$date[1])
-    deltat = 4/12
+    deltat = obsFreq/12
     #results_beast = beast(data_fill$mesic, start = start_Date, deltat = "3 months", dump.ci = T)
-    results_beast = beast(data_fill$mesic, start = as.Date('2004-6-1'), deltat = "3 months", dump.ci = T)
+    results_beast = beast(data_fill$mesic, start = as.Date('2004-6-1'), deltat = deltat, dump.ci = T)
     #outplot = plot(results_beast, interactive = T) 
     
     outsum = c(results_beast$trend, results_beast$season)
@@ -96,7 +96,7 @@ make_sum = function(method, file, ancFiles = NULL, restDate = NULL){
    # post_period = c(33, 64)
     
     ### define pre and post restoration period
-    index = which(data$Year == date)[4]
+    index = which(data$Year == date)[obsFreq]
     
     pre_period = c(1,index)
     post_period = c(index + 1, length(data_bsts_time))
@@ -110,10 +110,10 @@ make_sum = function(method, file, ancFiles = NULL, restDate = NULL){
     #impact = CausalImpact(data_bsts, pre_period, post_period, model.args = list(nseasons = 4))
     ## MAKE nseasons selectable!!!!
     impact_time = CausalImpact(data_bsts_time, pre_period_date, post_period_date, 
-                               model.args = list(nseasons = 4))
+                               model.args = list(nseasons = obsFreq))
     
     #summary(impact) 
-    outsum = summary(impact_time) ## nearly identical results AND includes period of missing data...
+    outsum = summary(impact_time)
     
     outplot = plot(impact_time) 
     }
@@ -121,7 +121,7 @@ make_sum = function(method, file, ancFiles = NULL, restDate = NULL){
   return(outsum)
 }
 
-make_plot = function(method, file, ancFiles = NULL, restDate = NULL){
+make_plot = function(method, file, ancFiles = NULL, restDate = NULL, obsFreq){
   #make_plot = function(method, file, date = NULL){
   ## read the CSV data
   data = read.csv(file)
@@ -142,19 +142,23 @@ make_plot = function(method, file, ancFiles = NULL, restDate = NULL){
   
   ## include a 'year' variable
   data_fill$year = format(as.Date(data_fill$system.time_start, format = "%b %e, %Y"), "%Y")
+  
+  ## cast obsFreq to numeric
+  obsFreq = as.numeric(obsFreq)
+  
   if(method == "BCP"){
     
     ## univariate
     results_bcp = bcp(data_fill$mesic)
     outsum = summary(results_bcp)
     outplot = plot(results_bcp, main = "BCP output - Mesic probabilities of change",
-                   xlab = "Date", xaxlab = data_fill$year ) ## FIGURE 3
+                   xlab = "Date", xaxlab = data_fill$year )
     
   }
   
   if(method == "BFAST"){
     ## create a time series object
-    data_ts = ts(data_fill$mesic, frequency = 4) ## update to be flexible to # of obs/cycle
+    data_ts = ts(data_fill$mesic, frequency = obsFreq) 
     
     ## apply the BFAST function
     fit = bfast(data_ts, h = 0.15, season = "harmonic")
@@ -164,10 +168,9 @@ make_plot = function(method, file, ancFiles = NULL, restDate = NULL){
   
   if(method == "BEAST"){
     start_date = as.Date(data_fill$date[1])
-    deltat = 4/12
+    #deltat = obsFreq/12
     #results_beast = beast(data_fill$mesic, start = start_Date, deltat = "3 months", dump.ci = T)
-    results_beast = beast(data_fill$mesic, start = as.Date('2004-6-1'), deltat = "3 months", dump.ci = T)
-    #outplot = plot(results_beast, interactive = T) 
+    results_beast = beast(data_fill$mesic, start = start_date, deltat = obsFreq/12, dump.ci = T)
     
     outsum = summary(results_beast)
     outplot = plot(results_beast, interactive = F) ## MAKE DIMS BIGGER 
@@ -194,17 +197,11 @@ make_plot = function(method, file, ancFiles = NULL, restDate = NULL){
                           as.Date(data_fill$system.time_start,format = "%b %e, %Y")) ## includes missing data period
     
     print(data_bsts_time)
-    # ## define pre and post restoration periods - MAKE DYNAMIC!
-    #pre_period = c(1,32)
-    #post_period = c(33, 64)
     
-    ### define pre and post restoration period - MAKE DYNAMIC
-    restIndex = which(data_fill$year == restDate)[4]
+    ### define pre and post restoration period 
+    restIndex = which(data_fill$year == restDate)[obsFreq]
     #print(restDate)
     print(restIndex)
-
-    #pre_period_date = as.Date(c("2004-06-01", "2012-09-01"), format = "%Y-%m-%d")
-    #post_period_date = as.Date(c("2013-06-01", "2020-09-01"), format = "%Y-%m-%d")
 
     pre_period_date = as.Date(c(index(data_bsts_time[1]), index(data_bsts_time[restIndex])),format = "%Y-%m-%d")
     post_period_date = as.Date(c(index(data_bsts_time[restIndex + 1]), index(data_bsts_time[length(data_fill[,1])])), format = "%Y-%m-%d") 
@@ -214,7 +211,7 @@ make_plot = function(method, file, ancFiles = NULL, restDate = NULL){
     #impact = CausalImpact(data_bsts, pre_period, post_period, model.args = list(nseasons = 4))
     ## MAKE nseasons selectable!!!!
     impact_time = CausalImpact(data_bsts_time, pre_period_date, post_period_date, 
-                               model.args = list(nseasons = 4))
+                               model.args = list(nseasons = obsFreq))
     
     summary(impact_time) 
     outsum = summary(impact_time) 

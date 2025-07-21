@@ -1,7 +1,5 @@
 ## https://shiny.posit.co/r/getstarted/shiny-basics/
 
-## https://shiny.posit.co/r/gallery/widgets/widget-gallery/ more on widgets
-#install.packages('shiny')
 library(shiny)
 library(bslib)
 library(bsicons)
@@ -34,6 +32,11 @@ ui <- page_sidebar(
         "date", 
         label = "Select intervention year (BSTS)", 
         choices = 2000:2025),
+    selectInput(
+      "freq", 
+      label = "Select number of observations/cyle", 
+      choices = 2:24,
+      selected = 4),
     fileInput("file2", label = "Predictor (for BSTS)", accept = ".csv" ),
     #card(
     #  card_header(""),
@@ -91,6 +94,10 @@ server <- function(input, output, session) {
     input$date
   })
   
+  obsFreq = reactive({
+    input$freq
+  })
+  
   output$date = renderText({
     paste0("Restoration date: ", input$date)
   })
@@ -104,8 +111,8 @@ server <- function(input, output, session) {
   output$plot = renderPlot({
    req(data())
   
-  make_plot(method(), datafile(), predfile(), restDate())
-
+  make_plot(method(), datafile(), predfile(), restDate(), obsFreq())
+  #asmake_sum(method(), datafile(), predfile(), restDate(), obsFreq())
   })
 }
 #  observeEvent(input$action, {
