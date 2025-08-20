@@ -61,7 +61,8 @@ make_plot = function(method, file, ancFiles = NULL, restDate = NULL, obsFreq){
   rownames(data) = 1:nrow(data)
   
   ## cast to numeric dtype
-  data$mesic = as.numeric(data$mesic)
+  #data$mesic = as.numeric(data$mesic)
+  data$mesic = as.numeric(data[,2])
   
   ## cast obsFreq to numeric
   obsFreq = as.numeric(obsFreq)
@@ -179,7 +180,8 @@ make_sum = function(method, file, ancFiles = NULL, restDate = NULL, obsFreq){
   rownames(data) = 1:nrow(data)
   
   ## cast to numeric dtype
-  data$mesic = as.numeric(data$mesic)
+  #data$mesic = as.numeric(data$mesic)
+  data$mesic = as.numeric(data[,2])
   
   ## cast obsFreq to numeric
   obsFreq = as.numeric(obsFreq)
