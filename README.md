@@ -1,2 +1,2 @@
 # quantChangeApp
-shiny app for detecting changes in mrrmaid ts
+shiny app for detecting changes in monthly mrrmaid ts
