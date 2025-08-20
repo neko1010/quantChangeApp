@@ -1,6 +1,7 @@
 ## https://shiny.posit.co/r/getstarted/shiny-basics/
 
 library(shiny)
+library(shinyWidgets)
 library(bslib)
 library(bsicons)
 library(vroom)
@@ -9,48 +10,51 @@ library(ggplot2)
 library(dplyr)
 
 source("./helpersQC.R")
-#runExample("01_hello")
+
 # Define UI ----
 ui <- page_sidebar(
   title = "Time series analysis for quantifying restoration impacts",
   sidebar = sidebar(
+    width = 500,
     helpText(
         "Select an analysis method",
-        "and analyze your data. We have",
+        "and analyze your data from the ",
+        tags$a(href = "https://nekolarik.users.earthengine.app/view/monthly-mrrmaid",
+        "Monthly MRRMaid Google Earth Engine (GEE) web application."),
+        " Download .csv files from plots produced in the GEE app and apply any of the methods we have",
         "collated methods from the manuscript titled: ",
-        "Time series analyses provide a low-cost and scalable way",
-        "to assess restoration outcomes from satellite data."
+        "Time series analyses to demonstrate restoration outcomes and system",
+        "change from satellite data."
       ),
-    fileInput("file1", label = "Time Series", accept = ".csv" ),
+    
+    fileInput("file1", label = "Choose time series file (.csv)", accept = ".csv" ),
     selectInput(
         "select",
         "Choose analysis method",
         choices = list("BCP" , "BFAST", "BEAST" , "BSTS" ),
         selected = "BCP" 
       ),
+    ## omit for now
+   # selectInput(
+   #   "freq", 
+   #   label = "Select number of observations/cyle", 
+   #   choices = 2:24,
+   #   selected = 4),
+    
     selectInput(
         "date", 
         label = "Select intervention year (BSTS)", 
-        choices = 2000:2025),
-    selectInput(
-      "freq", 
-      label = "Select number of observations/cyle", 
-      choices = 2:24,
-      selected = 4),
-    fileInput("file2", label = "Predictor (for BSTS)", accept = ".csv" ),
-    #card(
-    #  card_header(""),
-    #  actionButton("action", "Submit")#https://shiny.posit.co/r/articles/build/action-buttons/
-    #),
-    card_image("./fig1.png")),## too small here but doesn't make sense in the main?
-    tableOutput("file"),
-    textOutput("date"),
+        choices = 2004:2025),
+    
+    fileInput("file2", label = "Climate predictor (for BSTS)", accept = ".csv" ),
+    card_image("./fig1.png")),
     mainPanel(
-      #tableOutput("head"),
-      plotOutput("plot")
+      ## Define plot size
+      plotOutput("plot",  width = "700px", height = "500px"),
+      textOutput("summary"),
+      downloadButton("dwnld")
   )
 )
-
 
 server <- function(input, output, session) {
   
@@ -67,15 +71,6 @@ server <- function(input, output, session) {
     )
   })
   
-  #output$head <- renderTable({
-  #  req(data())
-  #  if (is.null(data())) {
-  #    return(NULL)
-  #  }   
-  #  head(data())
-  #  #head(yankee)
-  #})
-  
   observeEvent(input$file1, {
     message(paste0("File Chosen: ", input$file1))
   })
@@ -87,8 +82,10 @@ server <- function(input, output, session) {
   
   ## predictor
   predfile = reactive({
-    input$file2$datapath
+  input$file2$datapath
   })
+  
+  print(predfile)
   
   restDate = reactive({
     input$date
@@ -109,15 +106,44 @@ server <- function(input, output, session) {
   
   ## plot
   output$plot = renderPlot({
-   req(data())
-  
-  make_plot(method(), datafile(), predfile(), restDate(), obsFreq())
-  #asmake_sum(method(), datafile(), predfile(), restDate(), obsFreq())
+    req(data())
+    
+    if(input$select == "BSTS"){
+      validate(
+        need(input$file2 != "", "Please select a predictor file")
+      )
+    }
+    #make_plot(method(), datafile(), predfile(), restDate(), obsFreq())
+    make_plot(method(), datafile(), predfile(), restDate(), 4)
   })
+  
+ # ## summary
+ output$summary = renderText({
+  req(data())
+   
+  if(input$select == "BSTS"){
+    validate(
+      need(input$file2 != "", "Please select a predictor file")
+    )
+  }
+   
+  #make_sum(method(), datafile(), predfile(), restDate(), obsFreq())
+  make_sum(method(), datafile(), predfile(), restDate(), 4)
+  })
+ 
+ 
+ output$dwnld <- downloadHandler(
+   filename = "output.png" ,
+   content <- function(file) {
+     png(file, width = 700, height = 500, units = "px", pointsize = 12,
+         bg = "white", res = NA)
+     plt = make_plot(method(), datafile(), predfile(), restDate(), obsFreq())
+     print(plt)
+     dev.off()},
+   contentType = 'image/png'
+ )
 }
-#  observeEvent(input$action, {
-#    output$data = renderTable({
-#      head(df)
+
 #      
 #    })
 #  })
