@@ -1,5 +1,4 @@
 library(bfast) ##BFAST
-library(terra)
 library(gtools)
 library(sf)
 library(bcp) ## Bayesian Change Point v4.0.3
@@ -7,6 +6,8 @@ library(Rbeast) ## Bayesian Estimator of Abrupt and Seasonal Trends
 library(CausalImpact) ## Bayesian Structural Time Series
 library(zoo)
 library(lubridate)
+
+
 
 replace_na_with_mean <- function(df, obsFreq) {
   ## cast obsFreq to numeric
@@ -32,7 +33,10 @@ replace_na_with_mean <- function(df, obsFreq) {
 }
 
 make_plot = function(method, file, ancFiles = NULL, restDate = NULL, obsFreq){
-  
+
+  ## seed for Bayesian methods
+  seed = 123
+  set.seed(seed)  
   ## read the CSV data
   data = read.csv(file)
   
@@ -70,6 +74,7 @@ make_plot = function(method, file, ancFiles = NULL, restDate = NULL, obsFreq){
   ## apply the interpolation function to fill NAs
   data_fill = replace_na_with_mean(data, obsFreq)
   ## include a 'year' variable
+  data_fill$date = format(as.Date(data_fill$system.time_start, format = "%b %e, %Y"), "%Y-%m-%d")
   data_fill$year = format(as.Date(data_fill$system.time_start, format = "%b %e, %Y"), "%Y")
   
   print(data_fill)
@@ -89,12 +94,21 @@ make_plot = function(method, file, ancFiles = NULL, restDate = NULL, obsFreq){
     
     ## apply the BFAST function
     fit = bfast(data_ts, h = 0.15, season = "harmonic")
-    outplot = plot(fit, ANOVA = T, main = "BFAST output", xaxt = "n")
+    
+    ## plot the output 
+    years_bfast = seq(min(data_fill$year), max(data_fill$year))
+    axLen = as.numeric(length(data_fill$year)/4)
+    outplot = plot(fit, type = 'components',  ANOVA = T, main = "BFAST output", xaxt = "n")
+    axis(1, at = 1:axLen, labels = years_bfast)
   }
   
   if(method == "BEAST"){
-    start_date = as.Date(data_fill$date[1], format = "%b %e, %Y")
-    results_beast = beast(data_fill$mesic, start = start_date, deltat = (obsFreq/12), dump.ci = T)
+    start_date = ymd(data_fill$date[1])
+   # results_beast = beast(data_fill$mesic, start = format(as.Date(start_date), "%Y-%M-%D"), 
+   #                       deltat = paste0((obsFreq/12), " months"), dump.ci = T)
+    #results_beast = beast(data_fill$mesic, start = as.Date('2004-6-1'), deltat = "3 months", dump.ci = T)
+    results_beast = beast(data_fill$mesic, start = as.Date(start_date), deltat = "3 months",  
+                          period = '12 months', dump.ci = T, mcmc.seed = seed)
     
     outplot = plot(results_beast, interactive = F) 
   }
@@ -152,6 +166,8 @@ make_plot = function(method, file, ancFiles = NULL, restDate = NULL, obsFreq){
 
 make_sum = function(method, file, ancFiles = NULL, restDate = NULL, obsFreq){
 
+  seed = 123
+  set.seed(seed)
   ## read the CSV data
   data = read.csv(file)
   
@@ -188,7 +204,9 @@ make_sum = function(method, file, ancFiles = NULL, restDate = NULL, obsFreq){
   
   ## apply the interpolation function to fill NAs
   data_fill = replace_na_with_mean(data, obsFreq)
+
   ## include a 'year' variable
+  data_fill$date = format(as.Date(data_fill$system.time_start, format = "%b %e, %Y"), "%Y-%m-%d")
   data_fill$year = format(as.Date(data_fill$system.time_start, format = "%b %e, %Y"), "%Y")
   
   print(data_fill)
@@ -206,8 +224,10 @@ make_sum = function(method, file, ancFiles = NULL, restDate = NULL, obsFreq){
     outdf = df[order(df$postProb, decreasing = T),]
     outdf = head(outdf, 3)
     outdates = as.list(outdf$date)
+    print(outdates[1])
     outprobs = as.list(outdf$postProb)
-    outsum = paste0("The highest probability of change (", outprobs[1],") occurred in ", outdates[1], ".")
+    outsum = paste0("The highest probability of change (", round(as.numeric(outprobs[1]), 2),
+                    ") occurred in ", format(as.Date(outdates[[1]], format ="%b %e, %Y"), "%B %Y"), ".")
     
     print(outsum) 
     
@@ -227,12 +247,17 @@ make_sum = function(method, file, ancFiles = NULL, restDate = NULL, obsFreq){
     if(is.na(dates[fit$Time][1]) == TRUE){
       outsum = paste0("No breakpoints detected")
     }
-    else{outsum = paste0("A breakpoint was detected at ", dates[fit$Time],".")}
+    else{outsum = paste0("A breakpoint was detected at ", 
+                         format(as.Date(dates[fit$Time], format ="%b %e, %Y"), "%B %Y"),".")}
   }
   
   if(method == "BEAST"){
-    start_date = as.Date(data_fill$date[1])
-    results_beast = beast(data_fill$mesic, start = start_date, deltat = obsFreq/12, dump.ci = T)
+    start_date = ymd(data_fill$date[1])
+    # results_beast = beast(data_fill$mesic, start = format(as.Date(start_date), "%Y-%M-%D"), 
+    #                       deltat = paste0((obsFreq/12), " months"), dump.ci = T)
+    #results_beast = beast(data_fill$mesic, start = as.Date('2004-6-1'), deltat = "3 months", dump.ci = T)
+    results_beast = beast(data_fill$mesic, start = as.Date(start_date), deltat = "3 months",  
+                          period = '12 months', dump.ci = T, mcmc.seed = seed)
     
     print(results_beast$trend$cp) ## points in time where tcp occurs
     print(results_beast$trend$cpPr)
@@ -251,7 +276,7 @@ make_sum = function(method, file, ancFiles = NULL, restDate = NULL, obsFreq){
     else{numseas = 0}
     
     outsum = paste0("Number of trend changepoints: ", numtrend,
-                    "\nNumber of seasonal changepoints: ", numseas)
+                    "; \nNumber of seasonal changepoints: ", numseas)
     
   }
 

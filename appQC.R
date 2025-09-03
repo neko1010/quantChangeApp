@@ -1,10 +1,8 @@
-## https://shiny.posit.co/r/getstarted/shiny-basics/
 
 library(shiny)
 library(shinyWidgets)
 library(bslib)
 library(bsicons)
-library(vroom)
 library(utils)
 library(ggplot2)
 library(dplyr)
@@ -17,16 +15,20 @@ ui <- page_sidebar(
   sidebar = sidebar(
     width = 500,
     helpText(
-        "Select an analysis method",
+        "Use the figure below to select an analysis method",
         "and analyze your data from the ",
         tags$a(href = "https://nekolarik.users.earthengine.app/view/monthly-mrrmaid",
         "Monthly MRRMaid Google Earth Engine (GEE) web application."),
         " Download .csv files from plots produced in the GEE app and apply any of the methods we have",
-        "collated methods from the manuscript titled: ",
-        "Time series analyses to demonstrate restoration outcomes and system",
-        "change from satellite data."
+        "collated from the manuscript titled: ",
+        tags$a(href = "https://doi.org/10.1111/rec.70184", 
+               "Time series analyses to demonstrate restoration outcomes and system change from satellite data."),
+        "Please refer to the manuscript for details regarding each method.", 
+        "For the BSTS, we recommend using the data from the  GRIDMET plot",
+        "produced in the Monthly MRRMaid application as the required predictor."
       ),
     
+    card_image("./fig1.png")),
     fileInput("file1", label = "Choose time series file (.csv)", accept = ".csv" ),
     selectInput(
         "select",
@@ -47,7 +49,6 @@ ui <- page_sidebar(
         choices = 2004:2025),
     
     fileInput("file2", label = "Climate predictor (for BSTS)", accept = ".csv" ),
-    card_image("./fig1.png")),
     mainPanel(
       ## Define plot size
       plotOutput("plot",  width = "700px", height = "500px"),
@@ -65,9 +66,7 @@ server <- function(input, output, session) {
     
     ext <- tools::file_ext(input$file1$name)
     switch(ext,
-           csv = vroom::vroom(input$file1$datapath, delim = ","),
-           tsv = vroom::vroom(input$file1$datapath, delim = "\t"),
-           validate("Invalid file; Please upload a .csv or .tsv file")
+           csv = read.csv(input$file1$datapath)
     )
   })
   
@@ -84,8 +83,6 @@ server <- function(input, output, session) {
   predfile = reactive({
   input$file2$datapath
   })
-  
-  print(predfile)
   
   restDate = reactive({
     input$date
